@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Totono",
+    "slug": "totono",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon/icon.png",
+    "backgroundColor": "#0A0A2E",
+    "userInterfaceStyle": "dark",
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon/adaptive-icon.png",
+        "backgroundColor": "#0A0A2E"
+      },
+      "package": "com.dotissleeping.totono"
+    },
+    "splash": {
+      "image": "./assets/images/backgrounds/bg_loading.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#0A0A2E"
+    },
+    "plugins": [
+      "expo-av",
+      "expo-font"
+    ]
+  }
+}
