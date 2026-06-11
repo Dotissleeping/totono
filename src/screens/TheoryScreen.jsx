@@ -12,7 +12,6 @@ const MUSIC = require('../../assets/audio/music_theory.mp3');
 
 export default function TheoryScreen({ navigation, route }) {
   const { caseData } = route.params;
-
   useMusic(MUSIC);
 
   const [loading, setLoading] = useState(false);
@@ -25,7 +24,7 @@ export default function TheoryScreen({ navigation, route }) {
       const verdict = await judgeTheory(caseData, theory);
       navigation.navigate('Verdict', { caseData, verdict, theory });
     } catch (e) {
-      setError(e?.message || 'Failed to judge theory. Check your API key.');
+      setError(e?.message || 'Something went wrong. Try again.');
     } finally {
       setLoading(false);
     }
@@ -33,55 +32,27 @@ export default function TheoryScreen({ navigation, route }) {
 
   return (
     <BackgroundWrapper source={BG}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={styles.container}>
-          {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              style={styles.backBtn}
-            >
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
               <Text style={styles.backText}>← BACK</Text>
             </TouchableOpacity>
-            <View style={styles.headerCenter}>
-              <Text style={styles.label}>THEORY</Text>
-              <Text style={styles.caseTitle}>{caseData.title}</Text>
-            </View>
+            <Text style={styles.caseTitle}>{caseData.title}</Text>
           </View>
 
           <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-            {/* Prompt */}
-            <View style={styles.promptBox}>
-              <Text style={styles.promptTitle}>THE QUESTION</Text>
-              <Text style={styles.promptText}>
-                You have reviewed the evidence. You have asked your questions.{'\n\n'}
-                Now — who committed this crime, and what drove them to do it?
-              </Text>
-              <Text style={styles.promptHint}>
-                The AI will judge your theory based on accuracy and psychological insight.
-                Points are awarded not just for naming the culprit, but for understanding <Text style={styles.promptHintBold}>why</Text>.
-              </Text>
-            </View>
+            <Text style={styles.prompt}>Who did it — and why?</Text>
 
-            {/* Suspect List reminder */}
-            <View style={styles.suspectReminder}>
-              <Text style={styles.suspectReminderLabel}>SUSPECTS</Text>
+            <View style={styles.suspects}>
               {caseData.suspects.map(s => (
-                <Text key={s.id} style={styles.suspectItem}>• {s.name} — {s.occupation}</Text>
+                <Text key={s.id} style={styles.suspectChip}>• {s.name}</Text>
               ))}
             </View>
 
-            {error && (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>⚠ {error}</Text>
-              </View>
-            )}
+            {error && <Text style={styles.errorText}>⚠ {error}</Text>}
 
             <TheoryInput onSubmit={handleSubmit} loading={loading} />
-
             <View style={{ height: 60 }} />
           </ScrollView>
         </View>
@@ -91,104 +62,28 @@ export default function TheoryScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  container: {
-    flex: 1,
-    zIndex: 1,
-    paddingTop: 50,
-  },
+  container: { flex: 1, zIndex: 1, paddingTop: 50 },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 16,
-    gap: 16,
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, marginBottom: 12, gap: 16,
   },
   backBtn: { padding: 4 },
-  backText: {
-    ...FONTS.ui,
-    fontSize: FONT_SIZES.sm,
-    color: COLORS.accent_teal,
-  },
-  headerCenter: { flex: 1 },
-  label: {
-    ...FONTS.ui,
-    fontSize: FONT_SIZES.xs,
-    color: COLORS.accent_gold,
-    letterSpacing: 4,
-    marginBottom: 2,
-  },
-  caseTitle: {
-    ...FONTS.display,
-    fontSize: FONT_SIZES.sm,
-    color: COLORS.text_primary,
-  },
+  backText: { ...FONTS.ui, fontSize: FONT_SIZES.sm, color: COLORS.accent_teal },
+  caseTitle: { ...FONTS.display, fontSize: FONT_SIZES.sm, color: COLORS.text_primary, flex: 1 },
   scroll: { flex: 1 },
-  promptBox: {
-    backgroundColor: COLORS.bg_surface,
-    borderWidth: 1,
-    borderColor: COLORS.border_bright,
-    borderRadius: 4,
-    padding: 16,
-    marginHorizontal: 16,
-    marginBottom: 14,
+  prompt: {
+    ...FONTS.display, fontSize: FONT_SIZES.lg, color: COLORS.accent_gold,
+    textAlign: 'center', marginVertical: 20, letterSpacing: 1,
   },
-  promptTitle: {
-    ...FONTS.ui,
-    fontSize: FONT_SIZES.xs,
-    color: COLORS.accent_red,
-    letterSpacing: 4,
-    marginBottom: 8,
+  suspects: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 8,
+    paddingHorizontal: 16, marginBottom: 20,
   },
-  promptText: {
-    ...FONTS.body,
-    fontSize: FONT_SIZES.base,
-    color: COLORS.text_primary,
-    lineHeight: 24,
-    marginBottom: 12,
-  },
-  promptHint: {
-    ...FONTS.body,
-    fontSize: FONT_SIZES.sm,
-    color: COLORS.text_secondary,
-    lineHeight: 20,
-  },
-  promptHintBold: {
-    color: COLORS.accent_gold,
-  },
-  suspectReminder: {
-    backgroundColor: COLORS.bg_mid,
-    borderRadius: 4,
-    padding: 14,
-    marginHorizontal: 16,
-    marginBottom: 14,
-  },
-  suspectReminderLabel: {
-    ...FONTS.ui,
-    fontSize: FONT_SIZES.xs,
-    color: COLORS.text_muted,
-    letterSpacing: 4,
-    marginBottom: 8,
-  },
-  suspectItem: {
-    ...FONTS.body,
-    fontSize: FONT_SIZES.sm,
-    color: COLORS.text_secondary,
-    lineHeight: 24,
-  },
-  errorBox: {
-    backgroundColor: 'rgba(232,57,74,0.1)',
-    borderWidth: 1,
-    borderColor: COLORS.error,
-    borderRadius: 4,
-    padding: 12,
-    marginHorizontal: 16,
-    marginBottom: 12,
+  suspectChip: {
+    ...FONTS.body, fontSize: FONT_SIZES.sm, color: COLORS.text_secondary,
   },
   errorText: {
-    ...FONTS.body,
-    fontSize: FONT_SIZES.sm,
-    color: COLORS.error,
-    lineHeight: 20,
+    ...FONTS.body, fontSize: FONT_SIZES.sm, color: COLORS.error,
+    marginHorizontal: 16, marginBottom: 12,
   },
 });

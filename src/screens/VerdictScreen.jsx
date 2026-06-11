@@ -11,11 +11,7 @@ const BG    = require('../../assets/images/backgrounds/bg_verdict.png');
 const MUSIC = require('../../assets/audio/music_verdict.mp3');
 
 function ScoreBar({ score }) {
-  const color =
-    score >= 80 ? COLORS.success :
-    score >= 50 ? COLORS.accent_gold :
-    COLORS.error;
-
+  const color = score >= 80 ? COLORS.success : score >= 50 ? COLORS.accent_gold : COLORS.error;
   return (
     <View style={scoreStyles.container}>
       <View style={scoreStyles.track}>
@@ -28,20 +24,16 @@ function ScoreBar({ score }) {
 
 const scoreStyles = StyleSheet.create({
   container: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  track: {
-    flex: 1, height: 8, backgroundColor: COLORS.border,
-    borderRadius: 4, overflow: 'hidden',
-  },
+  track: { flex: 1, height: 8, backgroundColor: COLORS.border, borderRadius: 4, overflow: 'hidden' },
   fill: { height: '100%', borderRadius: 4 },
   label: { ...FONTS.display, fontSize: FONT_SIZES.xl, minWidth: 40 },
 });
 
 export default function VerdictScreen({ navigation, route }) {
   const { caseData, verdict, theory } = route.params;
-
   useMusic(MUSIC);
 
-  const [didYouKnow, setDidYouKnow] = useState(null);
+  const [didYouKnow, setDidYouKnow]   = useState(null);
   const [loadingFact, setLoadingFact] = useState(true);
 
   useEffect(() => {
@@ -52,98 +44,59 @@ export default function VerdictScreen({ navigation, route }) {
   }, []);
 
   const culprit = caseData.suspects.find(s => s.id === caseData.truth.culpritId);
-
-  const verdictColor =
-    verdict.verdict === 'CORRECT'           ? COLORS.success :
-    verdict.verdict === 'PARTIALLY CORRECT' ? COLORS.accent_gold :
-    COLORS.error;
+  const verdictColor = verdict.verdict === 'CORRECT' ? COLORS.success : verdict.verdict === 'PARTIALLY CORRECT' ? COLORS.accent_gold : COLORS.error;
 
   return (
     <BackgroundWrapper source={BG}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.container}>
-          {/* Verdict Banner */}
-          <View style={[styles.verdictBanner, { borderColor: verdictColor }]}>
-            <Text style={styles.verdictLabel}>VERDICT</Text>
-            <Text style={[styles.verdictText, { color: verdictColor }]}>
-              {verdict.verdict}
-            </Text>
-          </View>
 
-          {/* Score */}
-          <View style={styles.scoreSection}>
-            <Text style={styles.sectionLabel}>SCORE</Text>
+          {/* Verdict + Score */}
+          <View style={[styles.banner, { borderColor: verdictColor }]}>
+            <Text style={[styles.verdictText, { color: verdictColor }]}>{verdict.verdict}</Text>
             <ScoreBar score={verdict.score} />
           </View>
 
-          {/* Detective Reaction */}
-          <View style={styles.reactionBox}>
-            <View style={styles.reactionHeader}>
-              <CharacterSprite name="detective" size={50} />
-              <Text style={styles.reactionSpeaker}>DETECTIVE</Text>
-            </View>
-            <Text style={styles.reactionText}>"{verdict.reaction}"</Text>
-          </View>
+          {/* Detective reaction */}
+          <Text style={styles.reaction}>"{verdict.reaction}"</Text>
 
-          {/* What They Got Right/Wrong */}
-          <View style={styles.analysisBox}>
-            <Text style={styles.sectionLabel}>ANALYSIS</Text>
-            <View style={styles.analysisRow}>
-              <Text style={styles.analysisTitle}>✓ Got Right</Text>
-              <Text style={styles.analysisText}>{verdict.whatTheyGotRight}</Text>
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.analysisRow}>
-              <Text style={[styles.analysisTitle, { color: COLORS.error }]}>✗ Missed</Text>
-              <Text style={styles.analysisText}>{verdict.whatTheyMissed}</Text>
-            </View>
-          </View>
-
-          {/* Full Reveal */}
-          <View style={styles.revealBox}>
-            <Text style={styles.sectionLabel}>THE TRUTH</Text>
-            {culprit && (
-              <View style={styles.culpritRow}>
-                <CharacterSprite name={culprit.sprite} size={80} />
-                <View style={styles.culpritInfo}>
-                  <Text style={styles.culpritLabel}>CULPRIT</Text>
-                  <Text style={styles.culpritName}>{culprit.name}</Text>
-                  <Text style={styles.culpritOccupation}>{culprit.occupation}</Text>
+          {/* Culprit reveal with sprite box */}
+          <View style={styles.culpritSection}>
+            <Text style={styles.sectionLabel}>THE CULPRIT</Text>
+            <View style={styles.culpritRow}>
+              {culprit && (
+                <View style={styles.spriteBox}>
+                  <CharacterSprite name={culprit.sprite} size={90} />
                 </View>
+              )}
+              <View style={styles.culpritInfo}>
+                <Text style={styles.culpritName}>{culprit?.name}</Text>
+                <Text style={styles.culpritOccupation}>{culprit?.occupation}</Text>
               </View>
-            )}
+            </View>
+          </View>
+
+          {/* Full reveal */}
+          <View style={styles.revealBox}>
             <Text style={styles.revealText}>{verdict.fullReveal}</Text>
           </View>
 
           {/* Did You Know */}
           <View style={styles.factBox}>
             <Text style={styles.factLabel}>DID YOU KNOW?</Text>
-            {loadingFact ? (
-              <ActivityIndicator color={COLORS.accent_teal} size="small" />
-            ) : didYouKnow ? (
-              <>
-                <Text style={styles.factText}>{didYouKnow.fact}</Text>
-                <Text style={styles.factCategory}>{didYouKnow.category}</Text>
-              </>
-            ) : null}
+            {loadingFact
+              ? <ActivityIndicator color={COLORS.accent_teal} size="small" />
+              : <Text style={styles.factText}>{didYouKnow?.fact}</Text>
+            }
           </View>
 
-          {/* Player's Theory */}
-          <View style={styles.theoryBox}>
-            <Text style={styles.sectionLabel}>YOUR THEORY</Text>
-            <Text style={styles.theoryText}>"{theory}"</Text>
-          </View>
-
-          {/* Actions */}
-          <View style={styles.actions}>
-            <TouchableOpacity
-              style={styles.newCaseBtn}
-              onPress={() => navigation.reset({ index: 0, routes: [{ name: 'Home' }] })}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.newCaseBtnText}>▶ NEW CASE</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={styles.newCaseBtn}
+            onPress={() => navigation.reset({ index: 0, routes: [{ name: 'Home' }] })}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.newCaseBtnText}>▶ NEW CASE</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </BackgroundWrapper>
@@ -152,185 +105,48 @@ export default function VerdictScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   scroll: { flex: 1, zIndex: 1 },
-  container: {
-    paddingTop: 60,
-    paddingBottom: 60,
-    paddingHorizontal: 16,
-    gap: 20,
+  container: { paddingTop: 60, paddingBottom: 60, paddingHorizontal: 16, gap: 20 },
+  banner: {
+    borderWidth: 2, borderRadius: 4, padding: 20, gap: 14,
   },
-  verdictBanner: {
-    borderWidth: 2,
-    borderRadius: 4,
-    padding: 20,
-    alignItems: 'center',
+  verdictText: { ...FONTS.display, fontSize: FONT_SIZES.xl, letterSpacing: 4, textAlign: 'center' },
+  reaction: {
+    ...FONTS.body, fontSize: FONT_SIZES.base, color: COLORS.text_secondary,
+    lineHeight: 24, fontStyle: 'italic', textAlign: 'center', paddingHorizontal: 8,
   },
-  verdictLabel: {
-    ...FONTS.ui,
-    fontSize: FONT_SIZES.xs,
-    color: COLORS.text_muted,
-    letterSpacing: 6,
-    marginBottom: 6,
-  },
-  verdictText: {
-    ...FONTS.display,
-    fontSize: FONT_SIZES.xl,
-    letterSpacing: 4,
-  },
-  scoreSection: {
-    backgroundColor: COLORS.bg_surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 4,
-    padding: 16,
+  culpritSection: {
+    backgroundColor: COLORS.bg_surface, borderWidth: 1,
+    borderColor: COLORS.border_bright, borderRadius: 4, padding: 16,
   },
   sectionLabel: {
-    ...FONTS.ui,
-    fontSize: FONT_SIZES.xs,
-    color: COLORS.text_muted,
-    letterSpacing: 4,
-    marginBottom: 10,
+    ...FONTS.ui, fontSize: FONT_SIZES.xs, color: COLORS.error,
+    letterSpacing: 4, marginBottom: 12,
   },
-  reactionBox: {
-    backgroundColor: COLORS.bg_surface,
-    borderWidth: 1,
-    borderColor: COLORS.border_bright,
-    borderRadius: 4,
-    padding: 16,
-  },
-  reactionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 10,
-  },
-  reactionSpeaker: {
-    ...FONTS.ui,
-    fontSize: FONT_SIZES.xs,
-    color: COLORS.accent_gold,
-    letterSpacing: 4,
-  },
-  reactionText: {
-    ...FONTS.body,
-    fontSize: FONT_SIZES.base,
-    color: COLORS.text_primary,
-    lineHeight: 24,
-    fontStyle: 'italic',
-  },
-  analysisBox: {
-    backgroundColor: COLORS.bg_surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 4,
-    padding: 16,
-  },
-  analysisRow: { marginBottom: 8 },
-  analysisTitle: {
-    ...FONTS.ui,
-    fontSize: FONT_SIZES.xs,
-    color: COLORS.success,
-    marginBottom: 4,
-  },
-  analysisText: {
-    ...FONTS.body,
-    fontSize: FONT_SIZES.base,
-    color: COLORS.text_secondary,
-    lineHeight: 22,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: 10,
-  },
-  revealBox: {
-    backgroundColor: COLORS.bg_surface,
-    borderWidth: 1,
-    borderColor: COLORS.border_bright,
-    borderRadius: 4,
-    padding: 16,
-  },
-  culpritRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 14,
+  culpritRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  spriteBox: {
+    width: 100, height: 110,
+    backgroundColor: 'rgba(20, 20, 82, 0.85)',
+    borderWidth: 1, borderColor: COLORS.border_bright,
+    borderRadius: 6, alignItems: 'center', justifyContent: 'flex-end',
+    overflow: 'hidden',
   },
   culpritInfo: { flex: 1 },
-  culpritLabel: {
-    ...FONTS.ui,
-    fontSize: FONT_SIZES.xs,
-    color: COLORS.error,
-    letterSpacing: 4,
-    marginBottom: 2,
+  culpritName: { ...FONTS.display, fontSize: FONT_SIZES.lg, color: COLORS.text_primary, marginBottom: 4 },
+  culpritOccupation: { ...FONTS.body, fontSize: FONT_SIZES.sm, color: COLORS.text_secondary },
+  revealBox: {
+    backgroundColor: COLORS.bg_surface, borderWidth: 1,
+    borderColor: COLORS.border, borderRadius: 4, padding: 16,
   },
-  culpritName: {
-    ...FONTS.display,
-    fontSize: FONT_SIZES.lg,
-    color: COLORS.text_primary,
-    marginBottom: 2,
-  },
-  culpritOccupation: {
-    ...FONTS.body,
-    fontSize: FONT_SIZES.sm,
-    color: COLORS.text_secondary,
-  },
-  revealText: {
-    ...FONTS.body,
-    fontSize: FONT_SIZES.base,
-    color: COLORS.text_primary,
-    lineHeight: 26,
-  },
+  revealText: { ...FONTS.body, fontSize: FONT_SIZES.base, color: COLORS.text_primary, lineHeight: 26 },
   factBox: {
-    backgroundColor: COLORS.bg_mid,
-    borderWidth: 1,
-    borderColor: COLORS.accent_teal,
-    borderRadius: 4,
-    padding: 16,
+    backgroundColor: COLORS.bg_mid, borderWidth: 1,
+    borderColor: COLORS.accent_teal, borderRadius: 4, padding: 16,
   },
-  factLabel: {
-    ...FONTS.ui,
-    fontSize: FONT_SIZES.xs,
-    color: COLORS.accent_teal,
-    letterSpacing: 4,
-    marginBottom: 10,
-  },
-  factText: {
-    ...FONTS.body,
-    fontSize: FONT_SIZES.base,
-    color: COLORS.text_primary,
-    lineHeight: 24,
-    marginBottom: 8,
-  },
-  factCategory: {
-    ...FONTS.ui,
-    fontSize: FONT_SIZES.xs,
-    color: COLORS.text_muted,
-    letterSpacing: 2,
-  },
-  theoryBox: {
-    backgroundColor: COLORS.bg_surface,
-    borderWidth: 1,
-    borderColor: COLORS.accent_purple,
-    borderRadius: 4,
-    padding: 16,
-  },
-  theoryText: {
-    ...FONTS.body,
-    fontSize: FONT_SIZES.sm,
-    color: COLORS.text_secondary,
-    lineHeight: 22,
-    fontStyle: 'italic',
-  },
-  actions: { gap: 12 },
+  factLabel: { ...FONTS.ui, fontSize: FONT_SIZES.xs, color: COLORS.accent_teal, letterSpacing: 4, marginBottom: 10 },
+  factText: { ...FONTS.body, fontSize: FONT_SIZES.base, color: COLORS.text_primary, lineHeight: 24 },
   newCaseBtn: {
-    backgroundColor: COLORS.accent_gold,
-    borderRadius: 4,
-    paddingVertical: 18,
-    alignItems: 'center',
+    backgroundColor: COLORS.accent_gold, borderRadius: 4,
+    paddingVertical: 18, alignItems: 'center',
   },
-  newCaseBtnText: {
-    ...FONTS.ui,
-    fontSize: FONT_SIZES.md,
-    color: COLORS.bg_dark,
-    letterSpacing: 3,
-  },
+  newCaseBtnText: { ...FONTS.ui, fontSize: FONT_SIZES.md, color: COLORS.bg_dark, letterSpacing: 3 },
 });
