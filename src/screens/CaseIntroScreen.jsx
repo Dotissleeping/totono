@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import BackgroundWrapper from '../components/BackgroundWrapper';
 import CharacterSprite from '../components/CharacterSprite';
-import DialogueBox from '../components/DialogueBox';
+import VisualNovelBox from '../components/VisualNovelBox';
 import { useMusic } from '../hooks/useMusic';
 import { generateCase } from '../services/groqService';
 import { COLORS } from '../constants/colors';
@@ -11,14 +11,32 @@ import { FONTS, FONT_SIZES } from '../constants/fonts';
 const BG    = require('../../assets/images/backgrounds/bg_case_intro.png');
 const MUSIC = require('../../assets/audio/music_case_intro.mp3');
 
+function splitLines(text) {
+  // Split long text into dialogue chunks of ~100 chars at sentence boundaries
+  const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+  const lines = [];
+  let current = '';
+  for (const s of sentences) {
+    if ((current + s).length > 120) {
+      if (current) lines.push(current.trim());
+      current = s;
+    } else {
+      current += s;
+    }
+  }
+  if (current) lines.push(current.trim());
+  return lines;
+}
+
 export default function CaseIntroScreen({ navigation }) {
   useMusic(MUSIC);
 
-  const [caseData, setCaseData]     = useState(null);
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState(null);
-  const [phase, setPhase]           = useState('intro');
-  const [suspectIdx, setSuspectIdx] = useState(0);
+  const [caseData, setCaseData]       = useState(null);
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState(null);
+  const [phase, setPhase]             = useState('intro');
+  const [suspectIdx, setSuspectIdx]   = useState(0);
+  const [dialogueDone, setDialogueDone] = useState(false);
 
   useEffect(() => { loadCase(); }, []);
 
@@ -29,6 +47,7 @@ export default function CaseIntroScreen({ navigation }) {
       const data = await generateCase();
       setCaseData(data);
       setPhase('intro');
+      setDialogueDone(false);
     } catch (e) {
       setError(e?.message || 'Failed to generate case. Check your API key.');
     } finally {
@@ -40,9 +59,11 @@ export default function CaseIntroScreen({ navigation }) {
     if (phase === 'intro') {
       setPhase('suspects');
       setSuspectIdx(0);
+      setDialogueDone(false);
     } else {
       if (suspectIdx < caseData.suspects.length - 1) {
         setSuspectIdx(i => i + 1);
+        setDialogueDone(false);
       } else {
         navigation.navigate('Clues', { caseData });
       }
@@ -78,6 +99,14 @@ export default function CaseIntroScreen({ navigation }) {
 
   // --- Intro phase ---
   if (phase === 'intro') {
+    const settingLines = splitLines(caseData.setting);
+    const victimLines  = [
+      `Victim: ${caseData.victim.name}, ${caseData.victim.age} years old.`,
+      `Occupation: ${caseData.victim.occupation}.`,
+      caseData.victim.description,
+    ];
+    const allLines = [...settingLines, ...victimLines];
+
     return (
       <BackgroundWrapper source={BG}>
         <View style={styles.container}>
@@ -85,19 +114,23 @@ export default function CaseIntroScreen({ navigation }) {
             <Text style={styles.caseLabel}>CASE FILE</Text>
             <Text style={styles.caseTitle}>{caseData.title}</Text>
           </View>
-          <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-            <DialogueBox speaker="DETECTIVE" text={caseData.setting} />
-            <View style={styles.victimCard}>
-              <Text style={styles.victimLabel}>VICTIM</Text>
-              <Text style={styles.victimName}>{caseData.victim.name}</Text>
-              <Text style={styles.victimInfo}>
-                {caseData.victim.age} y/o · {caseData.victim.occupation}
-              </Text>
-            </View>
-          </ScrollView>
-          <TouchableOpacity style={styles.continueBtn} onPress={handleContinue} activeOpacity={0.8}>
-            <Text style={styles.continueBtnText}>MEET THE SUSPECTS ▶</Text>
-          </TouchableOpacity>
+
+          <View style={styles.spriteBox}>
+            <CharacterSprite name="detective" size={170} />
+          </View>
+
+          <VisualNovelBox
+            speaker="DETECTIVE"
+            sprite="detective"
+            lines={allLines}
+            onComplete={() => setDialogueDone(true)}
+          />
+
+          {dialogueDone && (
+            <TouchableOpacity style={styles.continueBtn} onPress={handleContinue} activeOpacity={0.8}>
+              <Text style={styles.continueBtnText}>MEET THE SUSPECTS ▶</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </BackgroundWrapper>
     );
@@ -107,6 +140,13 @@ export default function CaseIntroScreen({ navigation }) {
   const suspect = caseData.suspects[suspectIdx];
   const isLast  = suspectIdx === caseData.suspects.length - 1;
 
+  const suspectLines = [
+    `My name is ${suspect.name}.`,
+    `I'm ${suspect.age} years old. I work as a ${suspect.occupation}.`,
+    `${suspect.relationship}.`,
+    `As for my alibi — ${suspect.alibi}`,
+  ];
+
   return (
     <BackgroundWrapper source={BG}>
       <View style={styles.container}>
@@ -114,27 +154,24 @@ export default function CaseIntroScreen({ navigation }) {
           SUSPECT {suspectIdx + 1} / {caseData.suspects.length}
         </Text>
 
-        {/* Sprite with background box */}
         <View style={styles.spriteBox}>
           <CharacterSprite name={suspect.sprite} size={170} />
         </View>
 
-        <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-          <View style={styles.suspectCard}>
-            <Text style={styles.suspectName}>{suspect.name}</Text>
-            <Text style={styles.suspectInfo}>{suspect.age} y/o · {suspect.occupation}</Text>
-            <Text style={styles.suspectRelation}>{suspect.relationship}</Text>
-            <View style={styles.alibiBox}>
-              <Text style={styles.alibiText}>"{suspect.alibi}"</Text>
-            </View>
-          </View>
-        </ScrollView>
+        <VisualNovelBox
+          speaker={suspect.name}
+          sprite={suspect.sprite}
+          lines={suspectLines}
+          onComplete={() => setDialogueDone(true)}
+        />
 
-        <TouchableOpacity style={styles.continueBtn} onPress={handleContinue} activeOpacity={0.8}>
-          <Text style={styles.continueBtnText}>
-            {isLast ? 'BEGIN INVESTIGATION ▶' : 'NEXT SUSPECT ▶'}
-          </Text>
-        </TouchableOpacity>
+        {dialogueDone && (
+          <TouchableOpacity style={styles.continueBtn} onPress={handleContinue} activeOpacity={0.8}>
+            <Text style={styles.continueBtnText}>
+              {isLast ? 'BEGIN INVESTIGATION ▶' : 'NEXT SUSPECT ▶'}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     </BackgroundWrapper>
   );
@@ -157,58 +194,30 @@ const styles = StyleSheet.create({
   },
   retryBtnText: { ...FONTS.ui, fontSize: FONT_SIZES.sm, color: COLORS.bg_dark },
   backLinkText: { ...FONTS.body, fontSize: FONT_SIZES.sm, color: COLORS.text_secondary },
-  caseHeader: { alignItems: 'center', paddingHorizontal: 24, marginBottom: 20 },
+  caseHeader: { alignItems: 'center', paddingHorizontal: 24, marginBottom: 12 },
   caseLabel: {
     ...FONTS.ui, fontSize: FONT_SIZES.xs, color: COLORS.accent_teal,
-    letterSpacing: 5, marginBottom: 6,
+    letterSpacing: 5, marginBottom: 4,
   },
   caseTitle: {
     ...FONTS.display, fontSize: FONT_SIZES.xl, color: COLORS.text_primary,
     textAlign: 'center', letterSpacing: 2,
   },
-  scroll: { flex: 1 },
-  victimCard: {
-    backgroundColor: COLORS.bg_surface, borderWidth: 1,
-    borderColor: COLORS.border_bright, borderRadius: 4,
-    padding: 16, marginHorizontal: 16, marginTop: 12, marginBottom: 16,
+  spriteBox: {
+    alignSelf: 'center',
+    width: 200, height: 210,
+    backgroundColor: 'rgba(20, 20, 82, 0.85)',
+    borderWidth: 1, borderColor: COLORS.border_bright,
+    borderRadius: 8, alignItems: 'center', justifyContent: 'flex-end',
+    marginBottom: 12, overflow: 'hidden',
   },
-  victimLabel: { ...FONTS.ui, fontSize: FONT_SIZES.xs, color: COLORS.accent_red, marginBottom: 4 },
-  victimName: { ...FONTS.display, fontSize: FONT_SIZES.lg, color: COLORS.text_primary, marginBottom: 4 },
-  victimInfo: { ...FONTS.body, fontSize: FONT_SIZES.sm, color: COLORS.text_secondary },
   suspectCounterText: {
     ...FONTS.ui, fontSize: FONT_SIZES.xs, color: COLORS.text_muted,
     letterSpacing: 3, textAlign: 'center', marginBottom: 8,
   },
-  // Suspect sprite background box
-  spriteBox: {
-    alignSelf: 'center',
-    width: 200,
-    height: 210,
-    backgroundColor: 'rgba(20, 20, 82, 0.85)',
-    borderWidth: 1,
-    borderColor: COLORS.border_bright,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    marginBottom: 12,
-    overflow: 'hidden',
-  },
-  suspectCard: {
-    backgroundColor: COLORS.bg_surface, borderWidth: 1,
-    borderColor: COLORS.border_bright, borderRadius: 4,
-    padding: 16, marginHorizontal: 16, marginBottom: 16,
-  },
-  suspectName: { ...FONTS.display, fontSize: FONT_SIZES.lg, color: COLORS.text_primary, marginBottom: 2 },
-  suspectInfo: { ...FONTS.body, fontSize: FONT_SIZES.sm, color: COLORS.text_secondary, marginBottom: 4 },
-  suspectRelation: { ...FONTS.body, fontSize: FONT_SIZES.sm, color: COLORS.accent_teal, marginBottom: 10 },
-  alibiBox: {
-    backgroundColor: COLORS.bg_mid, borderLeftWidth: 3,
-    borderLeftColor: COLORS.accent_purple, padding: 10, borderRadius: 2,
-  },
-  alibiText: { ...FONTS.body, fontSize: FONT_SIZES.sm, color: COLORS.text_secondary, lineHeight: 20, fontStyle: 'italic' },
   continueBtn: {
     backgroundColor: COLORS.accent_gold, marginHorizontal: 16,
-    borderRadius: 4, paddingVertical: 16, alignItems: 'center',
+    borderRadius: 4, paddingVertical: 16, alignItems: 'center', marginTop: 8,
   },
   continueBtnText: { ...FONTS.ui, fontSize: FONT_SIZES.sm, color: COLORS.bg_dark, letterSpacing: 2 },
 });

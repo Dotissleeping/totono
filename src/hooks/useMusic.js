@@ -3,7 +3,7 @@ import { Audio } from 'expo-av';
 import { getMusicEnabled } from '../services/storageService';
 
 const FADE_STEPS = 20;
-const FADE_INTERVAL = 50; // ms per step = 1 second total fade
+const FADE_INTERVAL = 50;
 
 export function useMusic(audioFile) {
   const soundRef = useRef(null);
@@ -22,9 +22,9 @@ export function useMusic(audioFile) {
         // Fade out existing sound first
         if (soundRef.current) {
           const old = soundRef.current;
-          let vol = 0.5;
+          let vol = 0.18;
           fadeInterval = setInterval(async () => {
-            vol -= 0.5 / FADE_STEPS;
+            vol -= 0.18 / FADE_STEPS;
             if (vol <= 0) {
               clearInterval(fadeInterval);
               await old.unloadAsync().catch(() => {});
@@ -55,9 +55,9 @@ export function useMusic(audioFile) {
         await new Promise(r => setTimeout(r, 300));
         let vol = 0;
         fadeInterval = setInterval(async () => {
-          vol += 0.5 / FADE_STEPS;
-          if (vol >= 0.5) {
-            vol = 0.5;
+          vol += 0.18 / FADE_STEPS;
+          if (vol >= 0.18) {
+            vol = 0.18;
             clearInterval(fadeInterval);
           }
           await sound.setVolumeAsync(vol).catch(() => {});
