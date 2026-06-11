@@ -3,7 +3,7 @@ import { getGroqKey } from './storageService';
 import { PROMPTS } from '../constants/prompts';
 
 const GROQ_BASE_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const DEFAULT_MODEL = 'llama3-70b-8192';
+const DEFAULT_MODEL = 'llama-3.3-70b-versatile';
 
 async function callGroq(messages, apiKey, maxTokens = 4000) {
   const key = apiKey || (await getGroqKey()) || process.env.EXPO_PUBLIC_GROQ_API_KEY;
@@ -24,7 +24,10 @@ async function callGroq(messages, apiKey, maxTokens = 4000) {
       },
       timeout: 30000,
     }
-  );
+  ).catch(err => {
+    const detail = err?.response?.data?.error?.message || err.message;
+    throw new Error(detail);
+  });
 
   return response.data.choices[0].message.content;
 }
