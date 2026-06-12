@@ -1,16 +1,16 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { playSFX } from '../hooks/useSFX';
 import { COLORS } from '../constants/colors';
 import { FONTS, FONT_SIZES } from '../constants/fonts';
 
-function splitLines(text, maxPerLine = 100, maxLines = 4) {
+function splitLines(text, maxLen = 110, maxLines = 4) {
+  if (!text) return [];
   const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
   const lines = [];
   let current = '';
-
   for (const s of sentences) {
-    if ((current + s).length > maxPerLine) {
+    if ((current + s).length > maxLen) {
       if (current) lines.push(current.trim());
       current = s;
     } else {
@@ -19,25 +19,21 @@ function splitLines(text, maxPerLine = 100, maxLines = 4) {
     if (lines.length >= maxLines) break;
   }
   if (current && lines.length < maxLines) lines.push(current.trim());
-
-  // Hard cap at maxLines
   return lines.slice(0, maxLines);
 }
 
 export default function VisualNovelBox({ speaker, lines: rawLines, onComplete, style }) {
-  // Flatten and re-split to enforce 3-4 line max per page
   const lines = rawLines
     ? rawLines.flatMap(l => splitLines(l)).slice(0, 4)
     : [];
 
-  const [lineIdx, setLineIdx]   = useState(0);
+  const [lineIdx, setLineIdx]     = useState(0);
   const [displayed, setDisplayed] = useState('');
   const [done, setDone]           = useState(false);
   const blinkAnim                 = useRef(new Animated.Value(1)).current;
-  const typingRef                 = useRef(null);
-  const charRef                   = useRef(0);
+  const intervalRef               = useRef(null);
 
-  // Blink ▼
+  // Blink animation
   useEffect(() => {
     const blink = Animated.loop(
       Animated.sequence([
@@ -49,44 +45,62 @@ export default function VisualNovelBox({ speaker, lines: rawLines, onComplete, s
     return () => blink.stop();
   }, []);
 
-  // Reset when lines change
+  // Reset when rawLines changes (new dialogue)
   useEffect(() => {
     setLineIdx(0);
     setDisplayed('');
     setDone(false);
   }, [rawLines]);
 
-  // Type out current line
+  // Type out line when lineIdx changes
   useEffect(() => {
     if (!lines || lines.length === 0) return;
-    setDisplayed('');
-    setDone(false);
-    charRef.current = 0;
 
     const currentLine = lines[lineIdx];
+    if (!currentLine) return;
 
-    typingRef.current = setInterval(async () => {
-      charRef.current++;
-      setDisplayed(currentLine.slice(0, charRef.current));
+    // Clear any existing interval
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
 
-      // Voice blip every 2 chars
-      if (charRef.current % 2 === 0) {
+    setDisplayed('');
+    setDone(false);
+
+    let i = 0;
+
+    intervalRef.current = setInterval(() => {
+      i++;
+      // Use the string directly, not state, to avoid closure issues
+      setDisplayed(currentLine.substring(0, i));
+
+      if (i % 2 === 0) {
         playSFX('voice');
       }
 
-      if (charRef.current >= currentLine.length) {
-        clearInterval(typingRef.current);
+      if (i >= currentLine.length) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
         setDone(true);
       }
-    }, 35);
+    }, 38);
 
-    return () => clearInterval(typingRef.current);
-  }, [lineIdx, lines]);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [lineIdx, rawLines]);
 
   function handleTap() {
-    // Skip to end of current line
+    // Skip to full line if still typing
     if (!done) {
-      clearInterval(typingRef.current);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
       setDisplayed(lines[lineIdx]);
       setDone(true);
       return;
@@ -105,7 +119,7 @@ export default function VisualNovelBox({ speaker, lines: rawLines, onComplete, s
 
   return (
     <TouchableOpacity style={[styles.box, style]} onPress={handleTap} activeOpacity={0.9}>
-      {speaker && <Text style={styles.speaker}>{speaker}</Text>}
+      {speaker ? <Text style={styles.speaker}>{speaker}</Text> : null}
       <Text style={styles.text}>{displayed}</Text>
       {done && (
         <Animated.Text style={[styles.arrow, { opacity: blinkAnim }]}>
