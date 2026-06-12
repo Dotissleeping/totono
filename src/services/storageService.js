@@ -52,4 +52,4 @@ export async function getAllSaveSlots() {
     slots.push(await getSaveSlot(i));
   }
   return slots;
-}
+} 
