@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
-import * as Font from 'expo-font';
+import { preloadAllSFX } from './src/hooks/useSFX';
 import AppNavigator from './src/navigation/AppNavigator';
 
 SplashScreen.preventAutoHideAsync();
@@ -12,10 +11,9 @@ export default function App() {
   useEffect(() => {
     async function prepare() {
       try {
-        // Load fonts here if using custom ones
-        // await Font.loadAsync({ 'PixelFont': require('./assets/fonts/pixel.ttf') });
+        await preloadAllSFX();
       } catch (e) {
-        console.warn('Font load error:', e);
+        console.warn('Preload error:', e);
       } finally {
         setAppReady(true);
         await SplashScreen.hideAsync();

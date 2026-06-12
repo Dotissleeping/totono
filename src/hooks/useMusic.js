@@ -2,10 +2,9 @@ import { useEffect, useRef } from 'react';
 import { Audio } from 'expo-av';
 import { getMusicEnabled } from '../services/storageService';
 
-const FADE_STEPS = 20;
+const FADE_STEPS = 15;
 const FADE_INTERVAL = 50;
 
-// Global sound reference shared across all screens
 let globalSound = null;
 let globalFile  = null;
 
@@ -20,7 +19,6 @@ export function useMusic(audioFile) {
         const enabled = await getMusicEnabled();
         if (!enabled || !audioFile) return;
 
-        // Same file already playing — don't restart
         if (globalFile === audioFile && globalSound) return;
 
         await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
@@ -30,10 +28,10 @@ export function useMusic(audioFile) {
           const old = globalSound;
           globalSound = null;
           globalFile  = null;
-          let vol = 0.18;
+          let vol = 0.4;
           await new Promise(resolve => {
             const interval = setInterval(async () => {
-              vol -= 0.18 / FADE_STEPS;
+              vol -= 0.4 / FADE_STEPS;
               if (vol <= 0) {
                 clearInterval(interval);
                 await old.unloadAsync().catch(() => {});
@@ -47,7 +45,6 @@ export function useMusic(audioFile) {
 
         if (!mountedRef.current) return;
 
-        // Load new sound
         const { sound } = await Audio.Sound.createAsync(audioFile, {
           isLooping: true,
           volume: 0,
@@ -62,13 +59,12 @@ export function useMusic(audioFile) {
         globalSound = sound;
         globalFile  = audioFile;
 
-        // Fade in
         await new Promise(r => setTimeout(r, 300));
         let vol = 0;
         const interval = setInterval(async () => {
-          vol += 0.18 / FADE_STEPS;
-          if (vol >= 0.18) {
-            vol = 0.18;
+          vol += 0.4 / FADE_STEPS;
+          if (vol >= 0.4) {
+            vol = 0.4;
             clearInterval(interval);
           }
           if (globalSound === sound) {
@@ -85,7 +81,6 @@ export function useMusic(audioFile) {
 
     return () => {
       mountedRef.current = false;
-      // Don't stop music on unmount — let next screen take over
     };
   }, [audioFile]);
 }
