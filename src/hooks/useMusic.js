@@ -28,10 +28,10 @@ export function useMusic(audioFile) {
           const old = globalSound;
           globalSound = null;
           globalFile  = null;
-          let vol = 0.4;
+          let vol = 0.25;
           await new Promise(resolve => {
             const interval = setInterval(async () => {
-              vol -= 0.4 / FADE_STEPS;
+              vol -= 0.25 / FADE_STEPS;
               if (vol <= 0) {
                 clearInterval(interval);
                 await old.unloadAsync().catch(() => {});
@@ -62,9 +62,9 @@ export function useMusic(audioFile) {
         await new Promise(r => setTimeout(r, 300));
         let vol = 0;
         const interval = setInterval(async () => {
-          vol += 0.4 / FADE_STEPS;
-          if (vol >= 0.4) {
-            vol = 0.4;
+          vol += 0.25 / FADE_STEPS;
+          if (vol >= 0.25) {
+            vol = 0.25;
             clearInterval(interval);
           }
           if (globalSound === sound) {
