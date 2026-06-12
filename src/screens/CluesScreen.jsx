@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import BackgroundWrapper from '../components/BackgroundWrapper';
 import { useMusic } from '../hooks/useMusic';
+import { playSFX } from '../hooks/useSFX';
+import { writeSaveSlot, getAllSaveSlots } from '../services/storageService';
 import { COLORS } from '../constants/colors';
 import { FONTS, FONT_SIZES } from '../constants/fonts';
 
@@ -40,9 +42,9 @@ function ClueCard({ clue, onUnlock }) {
 }
 
 export default function CluesScreen({ navigation, route }) {
-  const { caseData: initial } = route.params;
+  const { caseData: initial, difficulty = 'medium', saveSlot } = route.params;
   const [caseData, setCaseData] = useState(initial);
-  const [tab, setTab] = useState('clues');
+  const [tab, setTab]           = useState('clues');
 
   useMusic(MUSIC);
 
@@ -56,6 +58,31 @@ export default function CluesScreen({ navigation, route }) {
     }
   }
 
+  async function handleSave() {
+    playSFX('click');
+    const slots = await getAllSaveSlots();
+    const emptySlot = slots.findIndex(s => s === null);
+
+    if (emptySlot === -1) {
+      // All slots full — ask which to overwrite
+      Alert.alert(
+        'Save Full',
+        'All 5 save slots are full. Go to Save Files to delete one first.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    await writeSaveSlot(emptySlot, {
+      caseData,
+      difficulty,
+      stage: 'clues',
+    });
+
+    playSFX('unlock');
+    Alert.alert('Saved!', `Game saved to Slot ${emptySlot + 1}.`);
+  }
+
   const unlockedCount = caseData.clues.filter(c => !c.locked).length;
 
   return (
@@ -66,9 +93,14 @@ export default function CluesScreen({ navigation, route }) {
             <Text style={styles.caseLabel}>CASE FILE</Text>
             <Text style={styles.caseTitle}>{caseData.title}</Text>
           </View>
-          <View style={styles.clueCount}>
-            <Text style={styles.clueCountText}>{unlockedCount}/{caseData.clues.length}</Text>
-            <Text style={styles.clueCountLabel}>CLUES</Text>
+          <View style={styles.headerRight}>
+            <View style={styles.clueCount}>
+              <Text style={styles.clueCountText}>{unlockedCount}/{caseData.clues.length}</Text>
+              <Text style={styles.clueCountLabel}>CLUES</Text>
+            </View>
+            <TouchableOpacity style={styles.saveBtn} onPress={handleSave} activeOpacity={0.8}>
+              <Text style={styles.saveBtnText}>💾</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -94,7 +126,14 @@ export default function CluesScreen({ navigation, route }) {
         </ScrollView>
 
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.interrogateBtn} onPress={() => navigation.navigate('Interrogation', { caseData })} activeOpacity={0.8}>
+          <TouchableOpacity
+            style={styles.interrogateBtn}
+            onPress={() => {
+              playSFX('click');
+              navigation.navigate('Interrogation', { caseData, difficulty });
+            }}
+            activeOpacity={0.8}
+          >
             <Text style={styles.interrogateBtnText}>INTERROGATE ▶</Text>
           </TouchableOpacity>
         </View>
@@ -110,10 +149,17 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start', paddingHorizontal: 20, marginBottom: 16,
   },
   caseLabel: { ...FONTS.ui, fontSize: FONT_SIZES.xs, color: COLORS.accent_teal, letterSpacing: 4, marginBottom: 4 },
-  caseTitle: { ...FONTS.display, fontSize: FONT_SIZES.md, color: COLORS.text_primary, maxWidth: 220 },
+  caseTitle: { ...FONTS.display, fontSize: FONT_SIZES.md, color: COLORS.text_primary, maxWidth: 200 },
+  headerRight: { alignItems: 'flex-end', gap: 8 },
   clueCount: { alignItems: 'center' },
   clueCountText: { ...FONTS.display, fontSize: FONT_SIZES.xl, color: COLORS.accent_gold },
   clueCountLabel: { ...FONTS.ui, fontSize: FONT_SIZES.xs, color: COLORS.text_muted, letterSpacing: 2 },
+  saveBtn: {
+    backgroundColor: COLORS.bg_surface, borderWidth: 1,
+    borderColor: COLORS.border_bright, borderRadius: 4,
+    paddingHorizontal: 12, paddingVertical: 6,
+  },
+  saveBtnText: { fontSize: 18 },
   tabs: {
     flexDirection: 'row', marginHorizontal: 16, marginBottom: 12,
     borderWidth: 1, borderColor: COLORS.border_bright, borderRadius: 4, overflow: 'hidden',

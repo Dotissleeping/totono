@@ -1,6 +1,17 @@
 export const PROMPTS = {
 
-  generateCase: () => `You are a mystery case generator for a psychological mystery game inspired by the Japanese drama "Don't Call It Mystery" (ミステリと言う勿れ). Generate a COMPLETE mystery case with rich psychological depth.
+  generateCase: (difficulty = 'medium') => {
+    const lockedClues =
+      difficulty === 'easy' ? [false, false, false, false, false] :
+      difficulty === 'hard' ? [false, true,  true,  true,  true ] :
+                              [false, false, true,  true,  true  ];
+
+    return `You are a mystery case generator for a psychological mystery game inspired by the Japanese drama "Don't Call It Mystery" (ミステリと言う勿れ). Generate a COMPLETE mystery case with rich psychological depth.
+
+Difficulty: ${difficulty.toUpperCase()}
+${difficulty === 'easy'   ? '— Make the clues obvious. The motive should be clear from the evidence.' : ''}
+${difficulty === 'hard'   ? '— Make it complex with deep red herrings. The motive should be subtle and psychological.' : ''}
+${difficulty === 'medium' ? '— Balanced difficulty. Some red herrings but a fair mystery.' : ''}
 
 Respond ONLY with a valid JSON object — no markdown, no preamble. Use this exact structure:
 
@@ -66,75 +77,88 @@ Respond ONLY with a valid JSON object — no markdown, no preamble. Use this exa
       "title": "Clue name",
       "description": "What was found and where",
       "significance": "What this clue reveals",
-      "locked": false
+      "locked": ${lockedClues[0]}
     },
     {
       "id": "clue_2",
       "title": "Clue name",
       "description": "What was found and where",
       "significance": "What this clue reveals",
-      "locked": false
+      "locked": ${lockedClues[1]}
     },
     {
       "id": "clue_3",
       "title": "Clue name",
       "description": "What was found and where",
       "significance": "What this clue reveals",
-      "locked": true
+      "locked": ${lockedClues[2]}
     },
     {
       "id": "clue_4",
       "title": "Clue name",
       "description": "What was found and where",
       "significance": "What this clue reveals",
-      "locked": true
+      "locked": ${lockedClues[3]}
     },
     {
       "id": "clue_5",
       "title": "Clue name",
       "description": "What was found and where",
       "significance": "What this clue reveals",
-      "locked": true
+      "locked": ${lockedClues[4]}
     }
   ],
   "triviaQuestions": [
     {
-      "clueId": "clue_3",
+      "clueId": "clue_2",
       "question": "A psychology/criminology/science/history trivia question",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "correctIndex": 0,
       "explanation": "Brief explanation of why this is correct"
     },
     {
-      "clueId": "clue_4",
+      "clueId": "clue_3",
       "question": "A psychology/criminology/science/history trivia question",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "correctIndex": 2,
       "explanation": "Brief explanation of why this is correct"
     },
     {
-      "clueId": "clue_5",
+      "clueId": "clue_4",
       "question": "A psychology/criminology/science/history trivia question",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "correctIndex": 1,
+      "explanation": "Brief explanation of why this is correct"
+    },
+    {
+      "clueId": "clue_5",
+      "question": "A psychology/criminology/science/history trivia question",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correctIndex": 3,
       "explanation": "Brief explanation of why this is correct"
     }
   ],
   "truth": {
     "culpritId": "suspect_X",
     "method": "How the crime was committed",
-    "motive": "Deep psychological motive — explore the human psychology thoroughly",
-    "explanation": "Full 3-4 paragraph reveal of what really happened, with psychological depth"
+    "motive": "Deep psychological motive",
+    "explanation": "Full reveal of what really happened"
   },
   "didYouKnow": {
-    "fact": "An interesting educational fact related to the case theme (psychology, forensics, history, science)",
+    "fact": "An interesting educational fact related to the case theme",
     "source": "Field or discipline this comes from"
   }
 }
 
-Make the mystery psychologically complex. The motive should reflect deep human emotions — jealousy, grief, survival, betrayal, identity. The culprit should be genuinely surprising but fair. Include red herrings.`,
+Make the mystery psychologically complex. The culprit should be genuinely surprising but fair. Include red herrings.`;
+  },
 
-  judgeTheory: (caseData, theory) => `You are judging a player's theory in a mystery game. Be fair, analytical, and dramatically satisfying.
+  judgeTheory: (caseData, theory, difficulty = 'medium') => `You are judging a player's theory in a mystery game.
+
+DIFFICULTY: ${difficulty.toUpperCase()}
+${difficulty === 'easy' ? '— Be generous. Partial answers deserve good scores.' : ''}
+${difficulty === 'hard' ? '— Be strict. Only reward exact culprit AND detailed correct motive.' : ''}
+${difficulty === 'medium' ? '— Be fair and balanced.' : ''}
 
 THE CASE:
 Title: ${caseData.title}
@@ -149,40 +173,43 @@ Respond ONLY with a valid JSON object:
 {
   "score": number between 0-100,
   "verdict": "CORRECT" | "PARTIALLY CORRECT" | "INCORRECT",
-  "reaction": "One dramatic sentence reacting to their theory (in the voice of a wise detective)",
-  "whatTheyGotRight": "What elements of their theory were accurate (or 'Nothing' if fully wrong)",
-  "whatTheyMissed": "Key things they missed or got wrong",
-  "fullReveal": "The complete truth, dramatically revealed in 2-3 paragraphs"
+  "reaction": "One dramatic sentence reacting to their theory",
+  "whatTheyGotRight": "What elements were accurate",
+  "whatTheyMissed": "Key things they missed",
+  "fullReveal": "The complete truth in 2-3 paragraphs"
 }
 
-Scoring guide:
-- 80-100: Correctly identified culprit AND motive
-- 50-79: Correct culprit but wrong motive, OR wrong culprit but correct psychological insight
-- 20-49: Partial credit for identifying relevant suspects or themes
-- 0-19: Completely wrong`,
+Scoring guide (adjust based on difficulty):
+- Easy:   80-100 for culprit only, 50+ for close guess
+- Medium: 80-100 for culprit AND motive, 50-79 for culprit only
+- Hard:   80-100 for culprit AND exact motive AND method`,
 
-  interrogate: (caseData, question, history) => `You are playing the role of a wise, slightly theatrical detective narrator in a mystery game. The player is asking follow-up questions about the case.
+  interrogate: (caseData, question, history, difficulty = 'medium') => `You are a detective narrator in a mystery game.
+
+DIFFICULTY: ${difficulty.toUpperCase()}
+${difficulty === 'easy' ? '— Give helpful, somewhat direct hints. Point toward the right suspects.' : ''}
+${difficulty === 'hard' ? '— Give only vague psychological observations. Never hint at the culprit directly.' : ''}
+${difficulty === 'medium' ? '— Give thoughtful hints without directly revealing the answer.' : ''}
 
 CASE: ${caseData.title}
-SETTING: ${caseData.setting}
 SUSPECTS: ${caseData.suspects.map(s => s.name).join(', ')}
 CLUES FOUND: ${caseData.clues.filter(c => !c.locked).map(c => c.title).join(', ')}
 
-CONVERSATION HISTORY:
+HISTORY:
 ${history.map(h => `${h.role}: ${h.content}`).join('\n')}
 
-PLAYER QUESTION: "${question}"
+QUESTION: "${question}"
 
-Answer helpfully but don't reveal the culprit or full solution outright. Give thoughtful, psychologically-rich hints. Stay in character as a dramatic detective narrator. Keep response under 150 words.`,
+Keep response under 120 words. Stay in character.`,
 
-  generateDidYouKnow: (caseData) => `Based on this mystery case, generate an interesting educational "Did You Know?" fact.
+  generateDidYouKnow: (caseData) => `Based on this mystery case, generate an interesting educational fact.
 
 Case theme: ${caseData.truth.motive}
 Case method: ${caseData.truth.method}
 
 Respond ONLY with a JSON object:
 {
-  "fact": "An interesting, surprising educational fact related to the psychology, forensics, history, or science themes in this case. Make it genuinely fascinating — something the player will remember.",
+  "fact": "A fascinating educational fact related to the psychology, forensics, history, or science in this case.",
   "category": "Psychology | Forensics | History | Science | Criminology"
 }`,
 };

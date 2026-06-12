@@ -11,17 +11,9 @@ async function callGroq(messages, apiKey, maxTokens = 4000) {
 
   const response = await axios.post(
     GROQ_BASE_URL,
+    { model: DEFAULT_MODEL, messages, max_tokens: maxTokens, temperature: 0.9 },
     {
-      model: DEFAULT_MODEL,
-      messages,
-      max_tokens: maxTokens,
-      temperature: 0.9,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${key}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
       timeout: 30000,
     }
   ).catch(err => {
@@ -33,47 +25,30 @@ async function callGroq(messages, apiKey, maxTokens = 4000) {
 }
 
 function parseJSON(raw) {
-  // Strip markdown code fences if present
   const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
   return JSON.parse(cleaned);
 }
 
-export async function generateCase() {
-  const prompt = PROMPTS.generateCase();
-  const raw = await callGroq(
-    [{ role: 'user', content: prompt }],
-    null,
-    4000
-  );
+export async function generateCase(difficulty = 'medium') {
+  const prompt = PROMPTS.generateCase(difficulty);
+  const raw = await callGroq([{ role: 'user', content: prompt }], null, 4000);
   return parseJSON(raw);
 }
 
-export async function judgeTheory(caseData, theory) {
-  const prompt = PROMPTS.judgeTheory(caseData, theory);
-  const raw = await callGroq(
-    [{ role: 'user', content: prompt }],
-    null,
-    1000
-  );
+export async function judgeTheory(caseData, theory, difficulty = 'medium') {
+  const prompt = PROMPTS.judgeTheory(caseData, theory, difficulty);
+  const raw = await callGroq([{ role: 'user', content: prompt }], null, 1000);
   return parseJSON(raw);
 }
 
-export async function interrogate(caseData, question, history = []) {
-  const systemPrompt = PROMPTS.interrogate(caseData, question, history);
-  const raw = await callGroq(
-    [{ role: 'user', content: systemPrompt }],
-    null,
-    300
-  );
+export async function interrogate(caseData, question, history = [], difficulty = 'medium') {
+  const prompt = PROMPTS.interrogate(caseData, question, history, difficulty);
+  const raw = await callGroq([{ role: 'user', content: prompt }], null, 300);
   return raw;
 }
 
 export async function generateDidYouKnow(caseData) {
   const prompt = PROMPTS.generateDidYouKnow(caseData);
-  const raw = await callGroq(
-    [{ role: 'user', content: prompt }],
-    null,
-    300
-  );
+  const raw = await callGroq([{ role: 'user', content: prompt }], null, 300);
   return parseJSON(raw);
 }

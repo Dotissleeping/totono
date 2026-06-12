@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import BackgroundWrapper from '../components/BackgroundWrapper';
 import CharacterSprite from '../components/CharacterSprite';
 import VisualNovelBox from '../components/VisualNovelBox';
 import { useMusic } from '../hooks/useMusic';
+import { playSFX } from '../hooks/useSFX';
 import { generateCase } from '../services/groqService';
 import { COLORS } from '../constants/colors';
 import { FONTS, FONT_SIZES } from '../constants/fonts';
@@ -11,31 +12,33 @@ import { FONTS, FONT_SIZES } from '../constants/fonts';
 const BG    = require('../../assets/images/backgrounds/bg_case_intro.png');
 const MUSIC = require('../../assets/audio/music_case_intro.mp3');
 
-function splitLines(text) {
-  // Split long text into dialogue chunks of ~100 chars at sentence boundaries
+function splitLines(text, maxLen = 110, maxLines = 4) {
   const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
   const lines = [];
   let current = '';
   for (const s of sentences) {
-    if ((current + s).length > 120) {
+    if ((current + s).length > maxLen) {
       if (current) lines.push(current.trim());
       current = s;
     } else {
       current += s;
     }
+    if (lines.length >= maxLines) break;
   }
-  if (current) lines.push(current.trim());
-  return lines;
+  if (current && lines.length < maxLines) lines.push(current.trim());
+  return lines.slice(0, maxLines);
 }
 
-export default function CaseIntroScreen({ navigation }) {
+export default function CaseIntroScreen({ navigation, route }) {
+  const { difficulty = 'medium' } = route.params || {};
+
   useMusic(MUSIC);
 
-  const [caseData, setCaseData]       = useState(null);
-  const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState(null);
-  const [phase, setPhase]             = useState('intro');
-  const [suspectIdx, setSuspectIdx]   = useState(0);
+  const [caseData, setCaseData]         = useState(null);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState(null);
+  const [phase, setPhase]               = useState('intro');
+  const [suspectIdx, setSuspectIdx]     = useState(0);
   const [dialogueDone, setDialogueDone] = useState(false);
 
   useEffect(() => { loadCase(); }, []);
@@ -44,7 +47,7 @@ export default function CaseIntroScreen({ navigation }) {
     setLoading(true);
     setError(null);
     try {
-      const data = await generateCase();
+      const data = await generateCase(difficulty);
       setCaseData(data);
       setPhase('intro');
       setDialogueDone(false);
@@ -56,6 +59,7 @@ export default function CaseIntroScreen({ navigation }) {
   }
 
   function handleContinue() {
+    playSFX('click');
     if (phase === 'intro') {
       setPhase('suspects');
       setSuspectIdx(0);
@@ -65,22 +69,27 @@ export default function CaseIntroScreen({ navigation }) {
         setSuspectIdx(i => i + 1);
         setDialogueDone(false);
       } else {
-        navigation.navigate('Clues', { caseData });
+        navigation.navigate('Clues', { caseData, difficulty });
       }
     }
   }
 
+  // --- Loading ---
   if (loading) {
     return (
       <BackgroundWrapper source={BG}>
         <View style={styles.center}>
           <ActivityIndicator color={COLORS.accent_gold} size="large" />
           <Text style={styles.loadingText}>Crafting your mystery...</Text>
+          <Text style={styles.loadingSubtext}>
+            {difficulty === 'easy' ? '🔍 Easy Mode' : difficulty === 'hard' ? '💀 Hard Mode' : '🕵️ Medium Mode'}
+          </Text>
         </View>
       </BackgroundWrapper>
     );
   }
 
+  // --- Error ---
   if (error) {
     return (
       <BackgroundWrapper source={BG}>
@@ -102,10 +111,10 @@ export default function CaseIntroScreen({ navigation }) {
     const settingLines = splitLines(caseData.setting);
     const victimLines  = [
       `Victim: ${caseData.victim.name}, ${caseData.victim.age} years old.`,
-      `Occupation: ${caseData.victim.occupation}.`,
+      `${caseData.victim.occupation}.`,
       caseData.victim.description,
     ];
-    const allLines = [...settingLines, ...victimLines];
+    const allLines = [...settingLines, ...victimLines].slice(0, 4);
 
     return (
       <BackgroundWrapper source={BG}>
@@ -142,9 +151,9 @@ export default function CaseIntroScreen({ navigation }) {
 
   const suspectLines = [
     `My name is ${suspect.name}.`,
-    `I'm ${suspect.age} years old. I work as a ${suspect.occupation}.`,
+    `I'm ${suspect.age} years old. I work as ${suspect.occupation}.`,
     `${suspect.relationship}.`,
-    `As for my alibi — ${suspect.alibi}`,
+    `My alibi — ${suspect.alibi}`,
   ];
 
   return (
@@ -183,6 +192,9 @@ const styles = StyleSheet.create({
   loadingText: {
     ...FONTS.ui, fontSize: FONT_SIZES.md, color: COLORS.text_primary,
     marginTop: 20, letterSpacing: 3,
+  },
+  loadingSubtext: {
+    ...FONTS.body, fontSize: FONT_SIZES.sm, color: COLORS.text_muted, marginTop: 6,
   },
   errorText: {
     ...FONTS.body, fontSize: FONT_SIZES.base, color: COLORS.error,
