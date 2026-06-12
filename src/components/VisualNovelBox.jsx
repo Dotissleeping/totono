@@ -4,26 +4,40 @@ import { playSFX } from '../hooks/useSFX';
 import { COLORS } from '../constants/colors';
 import { FONTS, FONT_SIZES } from '../constants/fonts';
 
-// Map sprite name to voice SFX
-const VOICE_MAP = {
-  detective:          'detective',
-  suspect_tall_male:  'tall_male',
-  suspect_female:     'female',
-  suspect_hooded:     'hooded',
-  suspect_stocky_male:'stocky_male',
-};
+function splitLines(text, maxPerLine = 100, maxLines = 4) {
+  const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+  const lines = [];
+  let current = '';
 
-export default function VisualNovelBox({ speaker, sprite, lines, onComplete, style }) {
-  const [lineIdx, setLineIdx]     = useState(0);
+  for (const s of sentences) {
+    if ((current + s).length > maxPerLine) {
+      if (current) lines.push(current.trim());
+      current = s;
+    } else {
+      current += s;
+    }
+    if (lines.length >= maxLines) break;
+  }
+  if (current && lines.length < maxLines) lines.push(current.trim());
+
+  // Hard cap at maxLines
+  return lines.slice(0, maxLines);
+}
+
+export default function VisualNovelBox({ speaker, lines: rawLines, onComplete, style }) {
+  // Flatten and re-split to enforce 3-4 line max per page
+  const lines = rawLines
+    ? rawLines.flatMap(l => splitLines(l)).slice(0, 4)
+    : [];
+
+  const [lineIdx, setLineIdx]   = useState(0);
   const [displayed, setDisplayed] = useState('');
   const [done, setDone]           = useState(false);
   const blinkAnim                 = useRef(new Animated.Value(1)).current;
   const typingRef                 = useRef(null);
   const charRef                   = useRef(0);
 
-  const voice = VOICE_MAP[sprite] || 'detective';
-
-  // Blink animation for ▼
+  // Blink ▼
   useEffect(() => {
     const blink = Animated.loop(
       Animated.sequence([
@@ -34,6 +48,13 @@ export default function VisualNovelBox({ speaker, sprite, lines, onComplete, sty
     blink.start();
     return () => blink.stop();
   }, []);
+
+  // Reset when lines change
+  useEffect(() => {
+    setLineIdx(0);
+    setDisplayed('');
+    setDone(false);
+  }, [rawLines]);
 
   // Type out current line
   useEffect(() => {
@@ -48,9 +69,9 @@ export default function VisualNovelBox({ speaker, sprite, lines, onComplete, sty
       charRef.current++;
       setDisplayed(currentLine.slice(0, charRef.current));
 
-      // Play voice blip on every other character (not every char = less spammy)
+      // Voice blip every 2 chars
       if (charRef.current % 2 === 0) {
-        playSFX(voice);
+        playSFX('voice');
       }
 
       if (charRef.current >= currentLine.length) {
@@ -63,7 +84,7 @@ export default function VisualNovelBox({ speaker, sprite, lines, onComplete, sty
   }, [lineIdx, lines]);
 
   function handleTap() {
-    // If still typing — skip to end of current line
+    // Skip to end of current line
     if (!done) {
       clearInterval(typingRef.current);
       setDisplayed(lines[lineIdx]);
@@ -71,14 +92,11 @@ export default function VisualNovelBox({ speaker, sprite, lines, onComplete, sty
       return;
     }
 
-    // Play next line tap sound
     playSFX('next_line');
 
-    // Advance to next line
     if (lineIdx < lines.length - 1) {
       setLineIdx(i => i + 1);
     } else {
-      // All lines done
       onComplete && onComplete();
     }
   }
@@ -94,9 +112,7 @@ export default function VisualNovelBox({ speaker, sprite, lines, onComplete, sty
           {lineIdx < lines.length - 1 ? '▼' : '■'}
         </Animated.Text>
       )}
-      <Text style={styles.hint}>
-        {lineIdx + 1}/{lines.length}
-      </Text>
+      <Text style={styles.hint}>{lineIdx + 1}/{lines.length}</Text>
     </TouchableOpacity>
   );
 }
@@ -110,7 +126,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginHorizontal: 16,
     marginBottom: 16,
-    minHeight: 100,
+    minHeight: 110,
   },
   speaker: {
     ...FONTS.ui,
