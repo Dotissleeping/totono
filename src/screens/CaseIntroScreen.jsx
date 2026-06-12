@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import BackgroundWrapper from '../components/BackgroundWrapper';
 import CharacterSprite from '../components/CharacterSprite';
@@ -30,10 +30,8 @@ function splitLines(text, maxLen = 110, maxLines = 4) {
   return lines.slice(0, maxLines);
 }
 
-// Reference panel tabs — clues, suspects, crime scene
 function ReferencePanel({ caseData }) {
   const [tab, setTab] = useState('clues');
-
   return (
     <View style={refStyles.container}>
       <View style={refStyles.tabs}>
@@ -49,7 +47,6 @@ function ReferencePanel({ caseData }) {
           </TouchableOpacity>
         ))}
       </View>
-
       <ScrollView style={refStyles.scroll} showsVerticalScrollIndicator={false}>
         {tab === 'clues' && caseData.clues.map(c => (
           <View key={c.id} style={[refStyles.item, c.locked && refStyles.itemLocked]}>
@@ -57,7 +54,6 @@ function ReferencePanel({ caseData }) {
             {!c.locked && <Text style={refStyles.itemDesc}>{c.description}</Text>}
           </View>
         ))}
-
         {tab === 'suspects' && caseData.suspects.map(s => (
           <View key={s.id} style={refStyles.item}>
             <Text style={refStyles.itemTitle}>{s.name}</Text>
@@ -66,7 +62,6 @@ function ReferencePanel({ caseData }) {
             <Text style={refStyles.alibi}>"{s.alibi}"</Text>
           </View>
         ))}
-
         {tab === 'scene' && (
           <>
             <View style={refStyles.item}>
@@ -133,6 +128,7 @@ export default function CaseIntroScreen({ navigation, route }) {
     }
   }
 
+  // --- Loading ---
   if (loading) {
     return (
       <BackgroundWrapper source={BG}>
@@ -147,6 +143,7 @@ export default function CaseIntroScreen({ navigation, route }) {
     );
   }
 
+  // --- Error ---
   if (error) {
     return (
       <BackgroundWrapper source={BG}>
@@ -163,32 +160,31 @@ export default function CaseIntroScreen({ navigation, route }) {
     );
   }
 
+  // --- Safe to use caseData here — guaranteed not null ---
   const suspect = phase === 'suspects' ? caseData.suspects[suspectIdx] : null;
   const isLast  = phase === 'suspects' && suspectIdx === caseData.suspects.length - 1;
 
-  const introLines = useMemo(() => {
-    if (!caseData) return [];
-    return [
-      ...splitLines(caseData.setting),
-      `Victim: ${caseData.victim.name}, ${caseData.victim.age} years old.`,
-      `${caseData.victim.occupation}.`,
-    ].slice(0, 4);
-  }, [caseData]);
+  // Build lines here AFTER null check — no useMemo needed
+  const introLines = [
+    ...splitLines(caseData.setting),
+    `Victim: ${caseData.victim.name}, ${caseData.victim.age} years old.`,
+    `${caseData.victim.occupation}.`,
+  ].slice(0, 4);
 
-  const suspectLines = useMemo(() => {
-    if (!suspect) return [];
-    return [
-      `My name is ${suspect.name}.`,
-      `I'm ${suspect.age} years old. I work as ${suspect.occupation}.`,
-      `${suspect.relationship}.`,
-      `My alibi — ${suspect.alibi}`,
-    ];
-  }, [suspect]);
+  const suspectLines = suspect ? [
+    `My name is ${suspect.name}.`,
+    `I'm ${suspect.age} years old. I work as ${suspect.occupation}.`,
+    `${suspect.relationship}.`,
+    `My alibi — ${suspect.alibi}`,
+  ] : [];
+
+  const currentLines  = phase === 'intro' ? introLines : suspectLines;
+  const currentSpeaker = phase === 'intro' ? 'DETECTIVE' : suspect?.name;
+  const currentSprite  = phase === 'intro' ? 'detective' : suspect?.sprite;
 
   return (
     <BackgroundWrapper source={BG}>
       <View style={styles.container}>
-        {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.caseLabel}>CASE FILE</Text>
@@ -213,16 +209,13 @@ export default function CaseIntroScreen({ navigation, route }) {
             )}
 
             <View style={styles.spriteBox}>
-              <CharacterSprite
-                name={phase === 'intro' ? 'detective' : suspect?.sprite}
-                size={170}
-              />
+              <CharacterSprite name={currentSprite} size={170} />
             </View>
 
             <VisualNovelBox
-              speaker={phase === 'intro' ? 'DETECTIVE' : suspect?.name}
-              sprite={phase === 'intro' ? 'detective' : suspect?.sprite}
-              lines={phase === 'intro' ? introLines : suspectLines}
+              speaker={currentSpeaker}
+              sprite={currentSprite}
+              lines={currentLines}
               onComplete={() => setDialogueDone(true)}
             />
 
